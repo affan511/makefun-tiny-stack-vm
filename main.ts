@@ -77,19 +77,14 @@ function run(p: Uint8Array, inp: Uint8Array): { o: Uint8Array; c: number } {
       }
       case 80: {
         // Print D[sp-1] as decimal without allocating a string: write the
-        // digits straight into the output buffer (avoids TextEncoder + String
-        // on every print, the hottest output path).
-        let v = D[sp - 1];
-        const neg = v < 0;
-        let u = neg ? -v >>> 0 : v;
-        const tmp = new Uint8Array(11);
-        let n = 0;
-        do { tmp[n++] = 48 + (u % 10); u = (u / 10) | 0; } while (u);
-        const len = n + (neg ? 1 : 0);
-        if (ol + len > 65536) return done(11);
+        // digits straight into the output buffer.
+        let v = D[sp - 1], u = v < 0 ? -v >>> 0 : v, n = 0;
+        const t = new Uint8Array(11);
+        do t[n++] = 48 + u % 10, u = u / 10 | 0; while (u);
+        if (ol + n + (v < 0) > 65536) return done(11);
         sp--;
-        if (neg) out[ol++] = 45;
-        while (n) out[ol++] = tmp[--n];
+        if (v < 0) out[ol++] = 45;
+        while (n) out[ol++] = t[--n];
         break;
       }
       case 81:
