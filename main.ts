@@ -13,8 +13,6 @@ const T: Record<number, [number, number, number]> = {
 };
 for (let o = 16; o <= 34; o++) if (o !== 31) T[o] = o === 23 || o === 27 ? [0, 1, 1] : [0, 2, 1];
 
-const enc = new TextEncoder();
-
 function run(p: Uint8Array, inp: Uint8Array): { o: Uint8Array; c: number } {
   const D = new Int32Array(256);
   let sp = 0;
@@ -78,11 +76,20 @@ function run(p: Uint8Array, inp: Uint8Array): { o: Uint8Array; c: number } {
         break;
       }
       case 80: {
-        const b = enc.encode(String(D[sp - 1]));
-        if (ol + b.length > 65536) return done(11);
+        // Print D[sp-1] as decimal without allocating a string: write the
+        // digits straight into the output buffer (avoids TextEncoder + String
+        // on every print, the hottest output path).
+        let v = D[sp - 1];
+        const neg = v < 0;
+        let u = neg ? -v >>> 0 : v;
+        const tmp = new Uint8Array(11);
+        let n = 0;
+        do { tmp[n++] = 48 + (u % 10); u = (u / 10) | 0; } while (u);
+        const len = n + (neg ? 1 : 0);
+        if (ol + len > 65536) return done(11);
         sp--;
-        out.set(b, ol);
-        ol += b.length;
+        if (neg) out[ol++] = 45;
+        while (n) out[ol++] = tmp[--n];
         break;
       }
       case 81:
